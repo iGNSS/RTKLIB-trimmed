@@ -123,6 +123,7 @@ const char *msm_sig_irn[32]={
     ""  ,""  ,""  ,""  ,""  ,""  ,""  ,""
 };
 /* SSR signal and tracking mode IDs ------------------------------------------*/
+// SSR，State Space Representation，状态空间表示，即卫星轨道、卫星钟差、电离层延迟、对流层延迟等的修正量
 const uint8_t ssr_sig_gps[32]={
     CODE_L1C,CODE_L1P,CODE_L1W,CODE_L1S,CODE_L1L,CODE_L2C,CODE_L2D,CODE_L2S,
     CODE_L2L,CODE_L2X,CODE_L2P,CODE_L2W,       0,       0,CODE_L5I,CODE_L5Q

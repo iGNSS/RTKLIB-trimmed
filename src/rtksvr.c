@@ -348,30 +348,11 @@ static int decoderaw(rtksvr_t *svr, int index)
     rtksvrlock(svr);
     
     for (i=0;i<svr->nb[index];i++) {
-        
-        /* input rtcm/receiver raw data from stream */
-        if (svr->format[index]==STRFMT_RTCM2) {
-            ret=input_rtcm2(svr->rtcm+index,svr->buff[index][i]);
-            obs=&svr->rtcm[index].obs;
-            nav=&svr->rtcm[index].nav;
-            ephsat=svr->rtcm[index].ephsat;
-            ephset=svr->rtcm[index].ephset;
-        }
-        else if (svr->format[index]==STRFMT_RTCM3) {
-            ret=input_rtcm3(svr->rtcm+index,svr->buff[index][i]);
-            obs=&svr->rtcm[index].obs;
-            nav=&svr->rtcm[index].nav;
-            ephsat=svr->rtcm[index].ephsat;
-            ephset=svr->rtcm[index].ephset;
-        }
-        else {
-            ret=input_raw(svr->raw+index,svr->format[index],svr->buff[index][i]);
-            obs=&svr->raw[index].obs;
-            nav=&svr->raw[index].nav;
-            ephsat=svr->raw[index].ephsat;
-            ephset=svr->raw[index].ephset;
-            sbsmsg=&svr->raw[index].sbsmsg;
-        }
+        ret=input_rtcm3(svr->rtcm+index,svr->buff[index][i]);
+        obs=&svr->rtcm[index].obs;
+        nav=&svr->rtcm[index].nav;
+        ephsat=svr->rtcm[index].ephsat;
+        ephset=svr->rtcm[index].ephset;
 #if 0 /* record for receiving tick for debug */
         if (ret==1) {
             trace(0,"%d %10d T=%s NS=%2d\n",index,tickget(),
@@ -390,13 +371,12 @@ static int decoderaw(rtksvr_t *svr, int index)
     svr->nb[index]=0;
     
     rtksvrunlock(svr);
-    
+
     return fobs;
 }
 /* decode download file ------------------------------------------------------*/
 static void decodefile(rtksvr_t *svr, int index)
 {
-    nav_t nav={0};
     char file[1024];
     int nb;
     
@@ -414,44 +394,6 @@ static void decodefile(rtksvr_t *svr, int index)
     svr->nb[index]=0;
     
     rtksvrunlock(svr);
-    
-    if (svr->format[index]==STRFMT_SP3) { /* precise ephemeris */
-        
-        /* read sp3 precise ephemeris */
-        readsp3(file,&nav,0);
-        if (nav.ne<=0) {
-            tracet(1,"sp3 file read error: %s\n",file);
-            return;
-        }
-        /* update precise ephemeris */
-        rtksvrlock(svr);
-        
-        if (svr->nav.peph) free(svr->nav.peph);
-        svr->nav.ne=svr->nav.nemax=nav.ne;
-        svr->nav.peph=nav.peph;
-        svr->ftime[index]=utc2gpst(timeget());
-        strcpy(svr->files[index],file);
-        
-        rtksvrunlock(svr);
-    }
-    else if (svr->format[index]==STRFMT_RNXCLK) { /* precise clock */
-        
-        /* read rinex clock */
-        if (readrnxc(file,&nav)<=0) {
-            tracet(1,"rinex clock file read error: %s\n",file);
-            return;
-        }
-        /* update precise clock */
-        rtksvrlock(svr);
-        
-        if (svr->nav.pclk) free(svr->nav.pclk);
-        svr->nav.nc=svr->nav.ncmax=nav.nc;
-        svr->nav.pclk=nav.pclk;
-        svr->ftime[index]=utc2gpst(timeget());
-        strcpy(svr->files[index],file);
-        
-        rtksvrunlock(svr);
-    }
 }
 /* carrier-phase bias (fcb) correction ---------------------------------------*/
 static void corr_phase_bias(obsd_t *obs, int n, const nav_t *nav)
@@ -558,11 +500,7 @@ static void send_nmea(rtksvr_t *svr, uint32_t *tickreset)
 	}
 }
 /* rtk server thread ---------------------------------------------------------*/
-#ifdef WIN32
 static DWORD WINAPI rtksvrthread(void *arg)
-#else
-static void *rtksvrthread(void *arg)
-#endif
 {
     rtksvr_t *svr=(rtksvr_t *)arg;
     obs_t obs;
@@ -588,6 +526,9 @@ static void *rtksvrthread(void *arg)
             
             /* read receiver raw/rtcm data from input stream */
             if ((n=strread(svr->stream+i,p,q-p))<=0) {
+                if (!i && !strcmp(svr->stream[i].msg, "end")) {
+                    svr->state = 0;
+                }
                 continue;
             }
             /* write receiver raw/rtcm data to log stream */
@@ -602,26 +543,8 @@ static void *rtksvrthread(void *arg)
             rtksvrunlock(svr);
         }
         for (i=0;i<3;i++) {
-            if (svr->format[i]==STRFMT_SP3||svr->format[i]==STRFMT_RNXCLK) {
-                /* decode download file */
-                decodefile(svr,i);
-            }
-            else {
-                /* decode receiver raw/rtcm data */
-                fobs[i]=decoderaw(svr,i);
-            }
-        }
-        /* averaging single base pos */
-        if (fobs[1]>0&&svr->rtk.opt.refpos==POSOPT_SINGLE) {
-            if ((svr->rtk.opt.maxaveep<=0||svr->nave<svr->rtk.opt.maxaveep)&&
-                pntpos(svr->obs[1][0].data,svr->obs[1][0].n,&svr->nav,
-                       &svr->rtk.opt,&sol,NULL,NULL,msg)) {
-                svr->nave++;
-                for (i=0;i<3;i++) {
-                    svr->rb_ave[i]+=(sol.rr[i]-svr->rb_ave[i])/svr->nave;
-                }
-            }
-            for (i=0;i<3;i++) svr->rtk.opt.rb[i]=svr->rb_ave[i];
+            /* decode receiver raw/rtcm data */
+            fobs[i]=decoderaw(svr,i);
         }
         for (i=0;i<fobs[0];i++) { /* for each rover observation data */
             obs.n=0;
@@ -630,10 +553,6 @@ static void *rtksvrthread(void *arg)
             }
             for (j=0;j<svr->obs[1][0].n&&obs.n<MAXOBS*2;j++) {
                 obs.data[obs.n++]=svr->obs[1][0].data[j];
-            }
-            /* carrier phase bias correction */
-            if (!strstr(svr->rtk.opt.pppopt,"-DIS_FCB")) {
-                corr_phase_bias(obs.data,obs.n,&svr->nav);
             }
             /* rtk positioning */
             rtksvrlock(svr);
@@ -842,7 +761,7 @@ extern int rtksvrstart(rtksvr_t *svr, int cycle, int buffsize, int *strs,
            cycle,buffsize,navsel,nmeacycle,nmeareq);
     
     if (svr->state) {
-        sprintf(errmsg,"server already started");
+        printf("server already started\n");
         return 0;
     }
     strinitcom();
@@ -868,7 +787,7 @@ extern int rtksvrstart(rtksvr_t *svr, int cycle, int buffsize, int *strs,
         if (!(svr->buff[i]=(uint8_t *)malloc(buffsize))||
             !(svr->pbuf[i]=(uint8_t *)malloc(buffsize))) {
             tracet(1,"rtksvrstart: malloc error\n");
-            sprintf(errmsg,"rtk server malloc error");
+            printf("rtk server malloc error\n");
             return 0;
         }
         for (j=0;j<10;j++) svr->nmsg[i][j]=0;
@@ -889,7 +808,7 @@ extern int rtksvrstart(rtksvr_t *svr, int cycle, int buffsize, int *strs,
     for (i=0;i<2;i++) { /* output peek buffer */
         if (!(svr->sbuf[i]=(uint8_t *)malloc(buffsize))) {
             tracet(1,"rtksvrstart: malloc error\n");
-            sprintf(errmsg,"rtk server malloc error");
+            printf("rtk server malloc error\n");
             return 0;
         }
     }
@@ -916,7 +835,7 @@ extern int rtksvrstart(rtksvr_t *svr, int cycle, int buffsize, int *strs,
         rw=i<3?STR_MODE_R:STR_MODE_W;
         if (strs[i]!=STR_FILE) rw|=STR_MODE_W;
         if (!stropen(svr->stream+i,strs[i],rw,paths[i])) {
-            sprintf(errmsg,"str%d open error path=%s",i+1,paths[i]);
+            printf("str%d open error path=%s\n",i+1,paths[i]);
             for (i--;i>=0;i--) strclose(svr->stream+i);
             return 0;
         }
@@ -943,49 +862,14 @@ extern int rtksvrstart(rtksvr_t *svr, int cycle, int buffsize, int *strs,
         writesolhead(svr->stream+i,svr->solopt+i-3);
     }
     /* create rtk server thread */
-#ifdef WIN32
     if (!(svr->thread=CreateThread(NULL,0,rtksvrthread,svr,0,NULL))) {
-#else
-    if (pthread_create(&svr->thread,NULL,rtksvrthread,svr)) {
-#endif
         for (i=0;i<MAXSTRRTK;i++) strclose(svr->stream+i);
-        sprintf(errmsg,"thread create error\n");
+        printf("thread create error\n");
         return 0;
     }
-    return 1;
-}
-/* stop rtk server -------------------------------------------------------------
-* start rtk server thread
-* args   : rtksvr_t *svr    IO rtk server
-*          char    **cmds   I  input stream stop commands
-*                              cmds[0]=input stream rover (NULL: no command)
-*                              cmds[1]=input stream base  (NULL: no command)
-*                              cmds[2]=input stream ephem (NULL: no command)
-* return : none
-*-----------------------------------------------------------------------------*/
-extern void rtksvrstop(rtksvr_t *svr, char **cmds)
-{
-    int i;
-    
-    tracet(3,"rtksvrstop:\n");
-    
-    /* write stop commands to input streams */
-    rtksvrlock(svr);
-    for (i=0;i<3;i++) {
-        if (cmds[i]) strsendcmd(svr->stream+i,cmds[i]);
-    }
-    rtksvrunlock(svr);
-    
-    /* stop rtk server */
-    svr->state=0;
-    
-    /* free rtk server thread */
-#ifdef WIN32
-    WaitForSingleObject(svr->thread,10000);
+    WaitForSingleObject(svr->thread, INFINITE);
     CloseHandle(svr->thread);
-#else
-    pthread_join(svr->thread,NULL);
-#endif
+    return 1;
 }
 /* open output/log stream ------------------------------------------------------
 * open output/log stream

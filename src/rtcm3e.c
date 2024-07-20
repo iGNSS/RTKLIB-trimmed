@@ -73,6 +73,7 @@ extern const char *msm_sig_cmp[32];
 extern const char *msm_sig_irn[32];
 
 /* SSR signal and tracking mode IDs ------------------------------------------*/
+// SSR，State Space Representation，状态空间表示，即卫星轨道、卫星钟差、电离层延迟、对流层延迟等的修正量
 extern const uint8_t ssr_sig_gps[32];
 extern const uint8_t ssr_sig_glo[32];
 extern const uint8_t ssr_sig_gal[32];

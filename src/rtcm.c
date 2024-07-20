@@ -134,61 +134,6 @@ extern void free_rtcm(rtcm_t *rtcm)
     free(rtcm->nav.eph ); rtcm->nav.eph =NULL; rtcm->nav.n=0;
     free(rtcm->nav.geph); rtcm->nav.geph=NULL; rtcm->nav.ng=0;
 }
-/* input RTCM 2 message from stream --------------------------------------------
-* fetch next RTCM 2 message and input a message from byte stream
-* args   : rtcm_t *rtcm     IO  rtcm control struct
-*          uint8_t data     I   stream data (1 byte)
-* return : status (-1: error message, 0: no message, 1: input observation data,
-*                  2: input ephemeris, 5: input station pos/ant parameters,
-*                  6: input time parameter, 7: input dgps corrections,
-*                  9: input special message)
-* notes  : before firstly calling the function, time in rtcm control struct has
-*          to be set to the approximate time within 1/2 hour in order to resolve
-*          ambiguity of time in rtcm messages.
-*          supported msgs RTCM ver.2: 1,3,9,14,16,17,18,19,22
-*          refer [1] for RTCM ver.2
-*-----------------------------------------------------------------------------*/
-extern int input_rtcm2(rtcm_t *rtcm, uint8_t data)
-{
-    uint8_t preamb;
-    int i;
-    
-    trace(5,"input_rtcm2: data=%02x\n",data);
-    
-    if ((data&0xC0)!=0x40) return 0; /* ignore if upper 2bit != 01 */
-    
-    for (i=0;i<6;i++,data>>=1) { /* decode 6-of-8 form */
-        rtcm->word=(rtcm->word<<1)+(data&1);
-        
-        /* synchronize frame */
-        if (rtcm->nbyte==0) {
-            preamb=(uint8_t)(rtcm->word>>22);
-            if (rtcm->word&0x40000000) preamb^=0xFF; /* decode preamble */
-            if (preamb!=RTCM2PREAMB) continue;
-            
-            /* check parity */
-            if (!decode_word(rtcm->word,rtcm->buff)) continue;
-            rtcm->nbyte=3; rtcm->nbit=0;
-            continue;
-        }
-        if (++rtcm->nbit<30) continue; else rtcm->nbit=0;
-        
-        /* check parity */
-        if (!decode_word(rtcm->word,rtcm->buff+rtcm->nbyte)) {
-            trace(2,"rtcm2 partity error: i=%d word=%08x\n",i,rtcm->word);
-            rtcm->nbyte=0; rtcm->word&=0x3;
-            continue;
-        }
-        rtcm->nbyte+=3;
-        if (rtcm->nbyte==6) rtcm->len=(rtcm->buff[5]>>3)*3+6;
-        if (rtcm->nbyte<rtcm->len) continue;
-        rtcm->nbyte=0; rtcm->word&=0x3;
-        
-        /* decode rtcm2 message */
-        return decode_rtcm2(rtcm);
-    }
-    return 0;
-}
 /* input RTCM 3 message from stream --------------------------------------------
 * fetch next RTCM 3 message and input a message from byte stream
 * args   : rtcm_t *rtcm     IO  rtcm control struct
@@ -285,25 +230,6 @@ extern int input_rtcm3(rtcm_t *rtcm, uint8_t data)
     }
     /* decode rtcm3 message */
     return decode_rtcm3(rtcm);
-}
-/* input RTCM 2 message from file ----------------------------------------------
-* fetch next RTCM 2 message and input a messsage from file
-* args   : rtcm_t *rtcm     IO  rtcm control struct
-*          FILE  *fp        I   file pointer
-* return : status (-2: end of file, -1...10: same as above)
-* notes  : same as above
-*-----------------------------------------------------------------------------*/
-extern int input_rtcm2f(rtcm_t *rtcm, FILE *fp)
-{
-    int i,data=0,ret;
-    
-    trace(4,"input_rtcm2f: data=%02x\n",data);
-    
-    for (i=0;i<4096;i++) {
-        if ((data=fgetc(fp))==EOF) return -2;
-        if ((ret=input_rtcm2(rtcm,(uint8_t)data))) return ret;
-    }
-    return 0; /* return at every 4k bytes */
 }
 /* input RTCM 3 message from file ----------------------------------------------
 * fetch next RTCM 3 message and input a messsage from file

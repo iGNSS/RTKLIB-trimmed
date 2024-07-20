@@ -3179,15 +3179,6 @@ extern void strsendcmd(stream_t *str, const char *cmd)
                 set_brate(str,brate);
                 sleepms(500);
             }
-            else if (!strncmp(msg+1,"UBX",3)) { /* ublox */
-                if ((m=gen_ubx(msg+4,buff))>0) strwrite(str,buff,m);
-            }
-            else if (!strncmp(msg+1,"STQ",3)) { /* skytraq */
-                if ((m=gen_stq(msg+4,buff))>0) strwrite(str,buff,m);
-            }
-            else if (!strncmp(msg+1,"NVS",3)) { /* nvs */
-                if ((m=gen_nvs(msg+4,buff))>0) strwrite(str,buff,m);
-            }
             else if (!strncmp(msg+1,"HEX",3)) { /* general hex message */
                 if ((m=gen_hex(msg+4,buff))>0) strwrite(str,buff,m);
             }

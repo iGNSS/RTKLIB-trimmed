@@ -424,22 +424,10 @@ static void strconv(stream_t *str, strconv_t *conv, uint8_t *buff, int n)
     int i,ret;
     
     for (i=0;i<n;i++) {
-        
-        /* input rtcm 2 messages */
-        if (conv->itype==STRFMT_RTCM2) {
-            ret=input_rtcm2(&conv->rtcm,buff[i]);
-            rtcm2rtcm(&conv->out,&conv->rtcm,ret,conv->stasel);
-        }
         /* input rtcm 3 messages */
-        else if (conv->itype==STRFMT_RTCM3) {
-            ret=input_rtcm3(&conv->rtcm,buff[i]);
-            rtcm2rtcm(&conv->out,&conv->rtcm,ret,conv->stasel);
-        }
-        /* input receiver raw messages */
-        else {
-            ret=input_raw(&conv->raw,conv->itype,buff[i]);
-            raw2rtcm(&conv->out,&conv->raw,ret);
-        }
+        ret=input_rtcm3(&conv->rtcm,buff[i]);
+        rtcm2rtcm(&conv->out,&conv->rtcm,ret,conv->stasel);
+
         /* write obs and nav data messages to stream */
         switch (ret) {
             case 1: write_obs(conv->out.time,str,conv); break;

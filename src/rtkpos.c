@@ -210,9 +210,9 @@ extern int rtkoutstat(rtk_t *rtk, char *buff)
         return 0;
     }
     /* write ppp solution status to buffer */
-    if (rtk->opt.mode>=PMODE_PPP_KINEMA) {
-        return pppoutstat(rtk,buff);
-    }
+    // if (rtk->opt.mode>=PMODE_PPP_KINEMA) {
+    //     return pppoutstat(rtk,buff);
+    // }
     est=rtk->opt.mode>=PMODE_DGPS;
     nfreq=est?nf:1;
     tow=time2gpst(rtk->sol.time,&week);
@@ -893,11 +893,11 @@ static int zdres(int base, const obsd_t *obs, int n, const double *rs,
     for (i=0;i<3;i++) rr_[i]=rr[i];
     
     /* earth tide correction */
-    if (opt->tidecorr) {
-        tidedisp(gpst2utc(obs[0].time),rr_,opt->tidecorr,&nav->erp,
-                 opt->odisp[base],disp);
-        for (i=0;i<3;i++) rr_[i]+=disp[i];
-    }
+    // if (opt->tidecorr) {
+    //     tidedisp(gpst2utc(obs[0].time),rr_,opt->tidecorr,&nav->erp,
+    //              opt->odisp[base],disp);
+    //     for (i=0;i<3;i++) rr_[i]+=disp[i];
+    // }
     ecef2pos(rr_,pos);
     
     for (i=0;i<n;i++) {
@@ -1666,8 +1666,8 @@ extern void rtkinit(rtk_t *rtk, const prcopt_t *opt)
     
     rtk->sol=sol0;
     for (i=0;i<6;i++) rtk->rb[i]=0.0;
-    rtk->nx=opt->mode<=PMODE_FIXED?NX(opt):pppnx(opt);
-    rtk->na=opt->mode<=PMODE_FIXED?NR(opt):pppnx(opt);
+    rtk->nx=NX(opt);
+    rtk->na=NR(opt);
     rtk->tt=0.0;
     rtk->x=zeros(rtk->nx,1);
     rtk->P=zeros(rtk->nx,rtk->nx);
@@ -1765,11 +1765,6 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     trace(3,"rtkpos  : time=%s n=%d\n",time_str(obs[0].time,3),n);
     trace(4,"obs=\n"); traceobs(4,obs,n);
     
-    /* set base staion position */
-    if (opt->refpos<=POSOPT_RINEX&&opt->mode!=PMODE_SINGLE&&
-        opt->mode!=PMODE_MOVEB) {
-        for (i=0;i<6;i++) rtk->rb[i]=i<3?opt->rb[i]:0.0;
-    }
     /* count rover/base station observations */
     for (nu=0;nu   <n&&obs[nu   ].rcv==1;nu++) ;
     for (nr=0;nu+nr<n&&obs[nu+nr].rcv==2;nr++) ;
@@ -1787,20 +1782,9 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     }
     if (time.time!=0) rtk->tt=timediff(rtk->sol.time,time);
     
-    /* single point positioning */
-    if (opt->mode==PMODE_SINGLE) {
-        outsolstat(rtk);
-        return 1;
-    }
     /* suppress output of single solution */
     if (!opt->outsingle) {
         rtk->sol.stat=SOLQ_NONE;
-    }
-    /* precise point positioning */
-    if (opt->mode>=PMODE_PPP_KINEMA) {
-        pppos(rtk,obs,nu,nav);
-        outsolstat(rtk);
-        return 1;
     }
     /* check number of data of base station and age of differential */
     if (nr==0) {
@@ -1808,32 +1792,12 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
         outsolstat(rtk);
         return 1;
     }
-    if (opt->mode==PMODE_MOVEB) { /*  moving baseline */
+    rtk->sol.age=(float)timediff(obs[0].time,obs[nu].time);
         
-        /* estimate position/velocity of base station */
-        if (!pntpos(obs+nu,nr,nav,&rtk->opt,&solb,NULL,NULL,msg)) {
-            errmsg(rtk,"base station position error (%s)\n",msg);
-            return 0;
-        }
-        rtk->sol.age=(float)timediff(rtk->sol.time,solb.time);
-        
-        if (fabs(rtk->sol.age)>TTOL_MOVEB) {
-            errmsg(rtk,"time sync error for moving-base (age=%.1f)\n",rtk->sol.age);
-            return 0;
-        }
-        for (i=0;i<6;i++) rtk->rb[i]=solb.rr[i];
-        
-        /* time-synchronized position of base station */
-        for (i=0;i<3;i++) rtk->rb[i]+=rtk->rb[i+3]*rtk->sol.age;
-    }
-    else {
-        rtk->sol.age=(float)timediff(obs[0].time,obs[nu].time);
-        
-        if (fabs(rtk->sol.age)>opt->maxtdiff) {
-            errmsg(rtk,"age of differential error (age=%.1f)\n",rtk->sol.age);
-            outsolstat(rtk);
-            return 1;
-        }
+    if (fabs(rtk->sol.age)>opt->maxtdiff) {
+        errmsg(rtk,"age of differential error (age=%.1f)\n",rtk->sol.age);
+        outsolstat(rtk);
+        return 1;
     }
     /* relative potitioning */
     relpos(rtk,obs,nu,nr,nav);

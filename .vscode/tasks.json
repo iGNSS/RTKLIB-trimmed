@@ -1,0 +1,50 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "GCC Build rtklib-trimmed",
+			"command": "C:\\msys64\\mingw32\\bin\\gcc.exe",
+			"args": [ // gcc编译命令，参考自 rtklib rtkrcv 的 cmake 文件
+				"-fdiagnostics-color=always", // 在编译过程中启用彩色诊断信息输出
+				"-Wall", // 开启额外警告
+				"-Wno-unused-but-set-variable", // 忽略未使用的变量的警告
+				"-O3", // 编译器优化等级（最高）
+				// "-ansi", // 禁用一些非 ANSI 标准的扩展
+				"-pedantic", // 启用额外的 C 语言标准检查
+				"-I", "${workspaceFolder}\\src", // 包含头文件的目录
+				"-DTRACE", "-DENAGLO", "-DENAQZS", "-DENACMP", "-DENAGAL", "-DENAIRN", "-DNFREQ=5", "-DSVR_REUSEADDR", "-DWIN32",// 定义宏
+				"-g", // 编译时生成调试信息
+                "rtknavi.c",
+                "src\\ephemeris.c",
+                "src\\geoid.c",
+                "src\\ionex.c",
+                "src\\lambda.c",
+                "src\\pntpos.c",
+                "src\\preceph.c",
+                "src\\rcvraw.c",
+                "src\\rtcm.c",
+                "src\\rtcm3.c",
+                "src\\rtcm3e.c",
+                "src\\rtkcmn.c",
+                "src\\rtkpos.c",
+                "src\\rtksvr.c",
+                "src\\sbas.c",
+                "src\\solution.c",
+                "src\\stream.c",
+                "src\\streamsvr.c",
+				"-o", "${workspaceFolder}\\Debug\\RTKLIB-trimmed.exe", // 指定目标名称
+                "-lwinmm", // 链接 winmm 库
+                "-lws2_32", // 链接 ws2_32 库
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build",
+			"detail": "编译器: C:\\msys64\\mingw32\\bin\\gcc.exe"
+		}
+	]
+}
