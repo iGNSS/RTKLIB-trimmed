@@ -513,30 +513,32 @@ extern void satno2id(int sat, char *id)
     }
     strcpy(id,"");
 }
-/* test excluded satellite -----------------------------------------------------
+/* test excluded satellite 检测需排除的卫星----------------------------------------
 * test excluded satellite
-* args   : int    sat       I   satellite number
-*          double var       I   variance of ephemeris (m^2)
-*          int    svh       I   sv health flag
-*          prcopt_t *opt    I   processing options (NULL: not used)
+* args   : int    sat       I   satellite number 卫星编号
+*          double var       I   variance of ephemeris (m^2) 卫星位置的方差
+*          int    svh       I   sv health flag 卫星的健康标志位
+*          prcopt_t *opt    I   processing options (NULL: not used) 处理选项
 * return : status (1:excluded,0:not excluded)
 *-----------------------------------------------------------------------------*/
 extern int satexclude(int sat, double var, int svh, const prcopt_t *opt)
 {
     int sys=satsys(sat,NULL);
-    
+    // 卫星健康标志位：0表示健康，-1则为不健康，星历不可用，剔除此卫星的原始观测量
     if (svh<0) return 1; /* ephemeris unavailable */
     
     if (opt) {
-        if (opt->exsats[sat-1]==1) return 1; /* excluded satellite */
+        if (opt->exsats[sat-1]==1) return 1; /* excluded satellite 剔除排外的卫星 */
         if (opt->exsats[sat-1]==2) return 0; /* included satellite */
-        if (!(sys&opt->navsys)) return 1; /* unselected sat sys */
+        if (!(sys&opt->navsys)) return 1; /* unselected sat sys 剔除未选择的卫星导航系统的卫星 */
     }
+    // 通过掩码得到QZSS卫星的健康标志
     if (sys==SYS_QZS) svh&=0xFE; /* mask QZSS LEX health */
     if (svh) {
         trace(3,"unhealthy satellite: sat=%3d svh=%02X\n",sat,svh);
         return 1;
     }
+    // 剔除位置方差过大的卫星的原始观测量
     if (var>MAX_VAR_EPH) {
         trace(3,"invalid ura satellite: sat=%3d ura=%.2f\n",sat,sqrt(var));
         return 1;
@@ -1240,7 +1242,7 @@ extern int solve(const char *tr, const double *A, const double *Y, int n,
 #endif
 /* end of matrix routines ----------------------------------------------------*/
 
-/* least square estimation -----------------------------------------------------
+/* least square estimation 最小二乘估计------------------------------------------
 * least square estimation by solving normal equation (x=(A*A')^-1*A*y)
 * args   : double *A        I   transpose of (weighted) design matrix (n x m)
 *          double *y        I   (weighted) measurements (m x 1)
@@ -1919,7 +1921,7 @@ extern double dms2deg(const double *dms)
     double sign=dms[0]<0.0?-1.0:1.0;
     return sign*(fabs(dms[0])+dms[1]/60.0+dms[2]/3600.0);
 }
-/* transform ecef to geodetic postion ------------------------------------------
+/* transform ecef to geodetic postion 将地心地固坐标转换为大地坐标系坐标----------
 * transform ecef position to geodetic position
 * args   : double *r        I   ecef position {x,y,z} (m)
 *          double *pos      O   geodetic position {lat,lon,h} (rad,m)
@@ -1956,7 +1958,7 @@ extern void pos2ecef(const double *pos, double *r)
     r[1]=(v+pos[2])*cosp*sinl;
     r[2]=(v*(1.0-e2)+pos[2])*sinp;
 }
-/* ecef to local coordinate transfromation matrix ------------------------------
+/* ecef to local coordinate transfromation matrix 计算ECEF到站心坐标系的旋转矩阵---
 * compute ecef to local coordinate transfromation matrix
 * args   : double *pos      I   geodetic position {lat,lon} (rad)
 *          double *E        O   ecef to local coord transformation matrix (3x3)
@@ -1966,12 +1968,12 @@ extern void pos2ecef(const double *pos, double *r)
 extern void xyz2enu(const double *pos, double *E)
 {
     double sinp=sin(pos[0]),cosp=cos(pos[0]),sinl=sin(pos[1]),cosl=cos(pos[1]);
-    
+    // (E.2.10)
     E[0]=-sinl;      E[3]=cosl;       E[6]=0.0;
     E[1]=-sinp*cosl; E[4]=-sinp*sinl; E[7]=cosp;
     E[2]=cosp*cosl;  E[5]=cosp*sinl;  E[8]=sinp;
 }
-/* transform ecef vector to local tangental coordinate -------------------------
+/* transform ecef vector to local tangental coordinate 将地心地固坐标转换为站心坐标系坐标
 * transform ecef vector to local tangental coordinate
 * args   : double *pos      I   geodetic position {lat,lon} (rad)
 *          double *r        I   vector in ecef coordinate {x,y,z}
@@ -1983,7 +1985,7 @@ extern void ecef2enu(const double *pos, const double *r, double *e)
     double E[9];
     
     xyz2enu(pos,E);
-    matmul("NN",3,1,3,1.0,E,r,0.0,e);
+    matmul("NN",3,1,3,1.0,E,r,0.0,e); // (E.3.10)
 }
 /* transform local vector to ecef coordinate -----------------------------------
 * transform local tangental coordinate vector to ecef
@@ -3517,30 +3519,30 @@ extern int reppaths(const char *path, char *rpath[], int nmax, gtime_t ts,
     for (i=0;i<n;i++) trace(3,"reppaths: rpath=%s\n",rpath[i]);
     return n;
 }
-/* geometric distance ----------------------------------------------------------
+/* geometric distance 计算接收机和卫星之间的卫地距--------------------------------
 * compute geometric distance and receiver-to-satellite unit vector
-* args   : double *rs       I   satellilte position (ecef at transmission) (m)
-*          double *rr       I   receiver position (ecef at reception) (m)
-*          double *e        O   line-of-sight vector (ecef)
-* return : geometric distance (m) (0>:error/no satellite position)
+* args   : double *rs       I   satellilte position (ecef at transmission) (m) 卫星的ECEF坐标
+*          double *rr       I   receiver position (ecef at reception) (m) 接收机的ECEF坐标
+*          double *e        O   line-of-sight vector (ecef) 接收机到卫星方向上的单位矢量
+* return : geometric distance (m) (0>:error/no satellite position) 卫地距
 * notes  : distance includes sagnac effect correction
 *-----------------------------------------------------------------------------*/
 extern double geodist(const double *rs, const double *rr, double *e)
 {
     double r;
     int i;
-    
+    // 当卫星坐标向量的模长小于WGS84的地球半长轴时，返回-1
     if (norm(rs,3)<RE_WGS84) return -1.0;
     for (i=0;i<3;i++) e[i]=rs[i]-rr[i];
     r=norm(e,3);
-    for (i=0;i<3;i++) e[i]/=r;
-    return r+OMGE*(rs[0]*rr[1]-rs[1]*rr[0])/CLIGHT;
+    for (i=0;i<3;i++) e[i]/=r; // (E.3.9)
+    return r+OMGE*(rs[0]*rr[1]-rs[1]*rr[0])/CLIGHT; // (E.3.8b)
 }
-/* satellite azimuth/elevation angle -------------------------------------------
+/* satellite azimuth/elevation angle 计算卫星的方位角和仰角-----------------------
 * compute satellite azimuth/elevation angle
-* args   : double *pos      I   geodetic position {lat,lon,h} (rad,m)
-*          double *e        I   receiver-to-satellilte unit vevtor (ecef)
-*          double *azel     IO  azimuth/elevation {az,el} (rad) (NULL: no output)
+* args   : double *pos      I   geodetic position {lat,lon,h} (rad,m) 接收机的经纬高
+*          double *e        I   receiver-to-satellilte unit vevtor (ecef) 接收机到卫星方向上的单位矢量
+*          double *azel     IO  azimuth/elevation {az,el} (rad) (NULL: no output) 卫星的方位角和仰角
 *                               (0.0<=azel[0]<2*pi,-pi/2<=azel[1]<=pi/2)
 * return : elevation angle (rad)
 *-----------------------------------------------------------------------------*/
@@ -3550,9 +3552,9 @@ extern double satazel(const double *pos, const double *e, double *azel)
     
     if (pos[2]>-RE_WGS84) {
         ecef2enu(pos,e,enu);
-        az=dot(enu,enu,2)<1E-12?0.0:atan2(enu[0],enu[1]);
+        az=dot(enu,enu,2)<1E-12?0.0:atan2(enu[0],enu[1]); // (E.3.11)
         if (az<0.0) az+=2*PI;
-        el=asin(enu[2]);
+        el=asin(enu[2]); // (E.3.12)
     }
     if (azel) {azel[0]=az; azel[1]=el;}
     return el;
@@ -3593,12 +3595,12 @@ extern void dops(int ns, const double *azel, double elmin, double *dop)
         dop[3]=SQRT(Q[10]);                 /* VDOP */
     }
 }
-/* ionosphere model ------------------------------------------------------------
+/* ionosphere model 用klobuchar模型计算L1频率GNSS信号的电离层延迟-----------------
 * compute ionospheric delay by broadcast ionosphere model (klobuchar model)
 * args   : gtime_t t        I   time (gpst)
-*          double *ion      I   iono model parameters {a0,a1,a2,a3,b0,b1,b2,b3}
+*          double *ion      I   iono model parameters {a0,a1,a2,a3,b0,b1,b2,b3} (E.5.5)
 *          double *pos      I   receiver position {lat,lon,h} (rad,m)
-*          double *azel     I   azimuth/elevation angle {az,el} (rad)
+*          double *azel     I   azimuth/elevation angle {az,el} (rad) 卫星的方位角和仰角
 * return : ionospheric delay (L1) (m)
 *-----------------------------------------------------------------------------*/
 extern double ionmodel(gtime_t t, const double *ion, const double *pos,
@@ -3615,32 +3617,32 @@ extern double ionmodel(gtime_t t, const double *ion, const double *pos,
     if (norm(ion,8)<=0.0) ion=ion_default;
     
     /* earth centered angle (semi-circle) */
-    psi=0.0137/(azel[1]/PI+0.11)-0.022;
+    psi=0.0137/(azel[1]/PI+0.11)-0.022; // (E.5.6)
     
     /* subionospheric latitude/longitude (semi-circle) */
-    phi=pos[0]/PI+psi*cos(azel[0]);
+    phi=pos[0]/PI+psi*cos(azel[0]); // (E.5.7)
     if      (phi> 0.416) phi= 0.416;
     else if (phi<-0.416) phi=-0.416;
-    lam=pos[1]/PI+psi*sin(azel[0])/cos(phi*PI);
+    lam=pos[1]/PI+psi*sin(azel[0])/cos(phi*PI); // (E.5.8)
     
     /* geomagnetic latitude (semi-circle) */
-    phi+=0.064*cos((lam-1.617)*PI);
+    phi+=0.064*cos((lam-1.617)*PI); // (E.5.9)
     
     /* local time (s) */
     tt=43200.0*lam+time2gpst(t,&week);
     tt-=floor(tt/86400.0)*86400.0; /* 0<=tt<86400 */
     
     /* slant factor */
-    f=1.0+16.0*pow(0.53-azel[1]/PI,3.0);
+    f=1.0+16.0*pow(0.53-azel[1]/PI,3.0); // (E.5.11)
     
     /* ionospheric delay */
     amp=ion[0]+phi*(ion[1]+phi*(ion[2]+phi*ion[3]));
     per=ion[4]+phi*(ion[5]+phi*(ion[6]+phi*ion[7]));
     amp=amp<    0.0?    0.0:amp;
     per=per<72000.0?72000.0:per;
-    x=2.0*PI*(tt-50400.0)/per;
+    x=2.0*PI*(tt-50400.0)/per; // (E.5.12)
     
-    return CLIGHT*f*(fabs(x)<1.57?5E-9+amp*(1.0+x*x*(-0.5+x*x/24.0)):5E-9);
+    return CLIGHT*f*(fabs(x)<1.57?5E-9+amp*(1.0+x*x*(-0.5+x*x/24.0)):5E-9); // (E.5.13)
 }
 /* ionosphere mapping function -------------------------------------------------
 * compute ionospheric delay mapping function by single layer model
@@ -3685,11 +3687,11 @@ extern double ionppp(const double *pos, const double *azel, double re,
     }
     return 1.0/sqrt(1.0-rp*rp);
 }
-/* troposphere model -----------------------------------------------------------
+/* troposphere model 用Saastamoinen模型计算对流层延迟-------------------------------
 * compute tropospheric delay by standard atmosphere and saastamoinen model
 * args   : gtime_t time     I   time
 *          double *pos      I   receiver position {lat,lon,h} (rad,m)
-*          double *azel     I   azimuth/elevation angle {az,el} (rad)
+*          double *azel     I   azimuth/elevation angle {az,el} (rad) 卫星的方位角和仰角
 *          double humi      I   relative humidity
 * return : tropospheric delay (m)
 *-----------------------------------------------------------------------------*/
@@ -3704,15 +3706,15 @@ extern double tropmodel(gtime_t time, const double *pos, const double *azel,
     /* standard atmosphere */
     hgt=pos[2]<0.0?0.0:pos[2];
     
-    pres=1013.25*pow(1.0-2.2557E-5*hgt,5.2568);
-    temp=temp0-6.5E-3*hgt+273.16;
-    e=6.108*humi*exp((17.15*temp-4684.0)/(temp-38.45));
+    pres=1013.25*pow(1.0-2.2557E-5*hgt,5.2568); // (E.5.1)
+    temp=temp0-6.5E-3*hgt+273.16; // (E.5.2)
+    e=6.108*humi*exp((17.15*temp-4684.0)/(temp-38.45)); // (E.5.3)
     
     /* saastamoninen model */
-    z=PI/2.0-azel[1];
+    z=PI/2.0-azel[1]; // (E.5.14)
     trph=0.0022768*pres/(1.0-0.00266*cos(2.0*pos[0])-0.00028*hgt/1E3)/cos(z);
     trpw=0.002277*(1255.0/temp+0.05)*e/cos(z);
-    return trph+trpw;
+    return trph+trpw; // (E.5.4)
 }
 #ifndef IERS_MODEL
 

@@ -83,7 +83,7 @@ static int snrmask(const obsd_t *obs, const double *azel, const prcopt_t *opt)
     }
     return 1;
 }
-/* psendorange with code bias correction -------------------------------------*/
+/* psendorange with code bias correction 计算差分码偏差(DCB)改正的伪距-----------*/
 static double prange(const obsd_t *obs, const nav_t *nav, const prcopt_t *opt,
                      double *var)
 {
@@ -164,7 +164,7 @@ static double prange(const obsd_t *obs, const nav_t *nav, const prcopt_t *opt,
     }
     return P1;
 }
-/* ionospheric correction ------------------------------------------------------
+/* ionospheric correction 电离层延迟改正-----------------------------------------
 * compute ionospheric correction
 * args   : gtime_t time     I   time
 *          nav_t  *nav      I   navigation data
@@ -207,7 +207,7 @@ extern int ionocorr(gtime_t time, const nav_t *nav, int sat, const double *pos,
     *var=ionoopt==IONOOPT_OFF?SQR(ERR_ION):0.0;
     return 1;
 }
-/* tropospheric correction -----------------------------------------------------
+/* tropospheric correction 对流层延迟改正-----------------------------------------
 * compute tropospheric correction
 * args   : gtime_t time     I   time
 *          nav_t  *nav      I   navigation data
@@ -241,12 +241,17 @@ extern int tropcorr(gtime_t time, const nav_t *nav, const double *pos,
     *var=tropopt==TROPOPT_OFF?SQR(ERR_TROP):0.0;
     return 1;
 }
-/* pseudorange residuals -----------------------------------------------------*/
+/* pseudorange residuals 计算伪距残差----------------------------------------*/
 static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
+                   // 迭代次数，原始观测量，原始观测量的个数，卫星的位置和速度
                    const double *dts, const double *vare, const int *svh,
+                   // 卫星的钟差和钟漂，卫星位置的方差，卫星的健康标志位
                    const nav_t *nav, const double *x, const prcopt_t *opt,
+                   // 导航电文，上次迭代的定位值，处理选项
                    double *v, double *H, double *var, double *azel, int *vsat,
+                   // 伪距残差，设计矩阵，方差，卫星的方位角和仰角，卫星在定位时是否有效
                    double *resp, int *ns)
+                   // 伪距残差，有效卫星的个数（参与定位的卫星的个数）
 {
     gtime_t time;
     double r,freq,dion=0, dtrp=0, vmeas, vion=0, vtrp=0, rr[3], pos[3], dtr, e[3], P;
@@ -256,35 +261,35 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
     
     for (i=0;i<3;i++) rr[i]=x[i];
     dtr=x[3];
-    
+    // 将上次迭代的接收机位置由地心地固坐标系转换为大地坐标系
     ecef2pos(rr,pos);
-    
+    // 遍历每个原始观测量
     for (i=*ns=0;i<n&&i<MAXOBS;i++) {
         vsat[i]=0; azel[i*2]=azel[1+i*2]=resp[i]=0.0;
         time=obs[i].time;
         sat=obs[i].sat;
         if (!(sys=satsys(sat,NULL))) continue;
         
-        /* reject duplicated observation data */
+        /* reject duplicated observation data 若和下一个观测量重复，跳到下一个观测量 */
         if (i<n-1&&i<MAXOBS-1&&sat==obs[i+1].sat) {
             trace(2,"duplicated obs data %s sat=%d\n",time_str(time,3),sat);
             i++;
             continue;
         }
-        /* excluded satellite? */
+        /* excluded satellite? 检测需排除的卫星 */
         if (satexclude(sat,vare[i],svh[i],opt)) continue;
         
-        /* geometric distance */
+        /* geometric distance 计算接收机和卫星的卫地距 */
         if ((r=geodist(rs+i*6,rr,e))<=0.0) continue;
         
         if (iter>0) {
-            /* test elevation mask */
+            /* test elevation mask 计算卫星仰角，去除低仰角的卫星 */
             if (satazel(pos,e,azel+i*2)<opt->elmin) continue;
             
-            /* test SNR mask */
+            /* test SNR mask 去除低信噪比的卫星 */
             if (!snrmask(obs+i,azel+i*2,opt)) continue;
             
-            /* ionospheric correction */
+            /* ionospheric correction 电离层延迟改正 */
             if (!ionocorr(time,nav,sat,pos,azel+i*2,opt->ionoopt,&dion,&vion)) {
                 continue;
             }
@@ -292,22 +297,22 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
             dion*=SQR(FREQ1/freq);
             vion*=SQR(FREQ1/freq);
             
-            /* tropospheric correction */
+            /* tropospheric correction 对流层延迟改正 */
             if (!tropcorr(time,nav,pos,azel+i*2,opt->tropopt,&dtrp,&vtrp)) {
                 continue;
             }
         }
-        /* psendorange with code bias correction */
+        /* psendorange with code bias correction 差分码偏差改正 */
         if ((P=prange(obs+i,nav,opt,&vmeas))==0.0) continue;
         
-        /* pseudorange residual */
+        /* pseudorange residual 伪距残差 */
         v[nv]=P-(r+dtr-CLIGHT*dts[i*2]+dion+dtrp);
         
-        /* design matrix */
+        /* design matrix 设计矩阵 */
         for (j=0;j<NX;j++) {
             H[j+nv*NX]=j<3?-e[j]:(j==3?1.0:0.0);
         }
-        /* time system offset and receiver bias correction */
+        /* time system offset and receiver bias correction 各卫星导航系统间的时间偏差和接收机时钟偏差校正 */
         if      (sys==SYS_GLO) {v[nv]-=x[4]; H[4+nv*NX]=1.0; mask[1]=1;}
         else if (sys==SYS_GAL) {v[nv]-=x[5]; H[5+nv*NX]=1.0; mask[2]=1;}
         else if (sys==SYS_CMP) {v[nv]-=x[6]; H[6+nv*NX]=1.0; mask[3]=1;}
@@ -319,13 +324,13 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
         
         vsat[i]=1; resp[i]=v[nv]; (*ns)++;
         
-        /* variance of pseudorange error */
+        /* variance of pseudorange error 计算伪距残差的方差 */
         var[nv++]=varerr(opt,azel[1+i*2],sys)+vare[i]+vmeas+vion+vtrp;
         
         trace(4,"sat=%2d azel=%5.1f %4.1f res=%7.3f sig=%5.3f\n",obs[i].sat,
               azel[i*2]*R2D,azel[1+i*2]*R2D,resp[i],sqrt(var[nv-1]));
     }
-    /* constraint to avoid rank-deficient */
+    /* constraint to avoid rank-deficient 为防止秩亏，将H和var补满 */
     for (i=0;i<NX-3;i++) {
         if (mask[i]) continue;
         v[nv]=0.0;
@@ -334,9 +339,11 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
     }
     return nv;
 }
-/* validate solution ---------------------------------------------------------*/
+/* validate solution 定位解的检验------------------------------------------------*/
 static int valsol(const double *azel, const int *vsat, int n,
+                  // 卫星的方位角和仰角，有效卫星标志位，原始观测量的个数
                   const prcopt_t *opt, const double *v, int nv, int nx,
+                  // 配置选项，伪距残差，有效伪距残差个数（方程个数），未知数个数
                   char *msg)
 {
     double azels[MAXOBS*2],dop[4],vv;
@@ -346,6 +353,7 @@ static int valsol(const double *azel, const int *vsat, int n,
     
     /* Chi-square validation of residuals */
     vv=dot(v,v,nv);
+    // (E.6.33)
     if (nv>nx&&vv>chisqr[nv-nx-1]) {
         sprintf(msg,"chi-square error nv=%d vv=%.1f cs=%.1f",nv,vv,chisqr[nv-nx-1]);
         return 0;
@@ -358,17 +366,22 @@ static int valsol(const double *azel, const int *vsat, int n,
         ns++;
     }
     dops(ns,azels,opt->elmin,dop);
+    // (E.6.34)
     if (dop[0]<=0.0||dop[0]>opt->maxgdop) {
         sprintf(msg,"gdop error nv=%d gdop=%.1f",nv,dop[0]);
         return 0;
     }
     return 1;
 }
-/* estimate receiver position ------------------------------------------------*/
+/* estimate receiver position 用伪距估计接收机位置------------------------------*/
 static int estpos(const obsd_t *obs, int n, const double *rs, const double *dts,
+                  // 原始观测量，原始观测量的个数，卫星的位置和速度，卫星的钟差和钟漂
                   const double *vare, const int *svh, const nav_t *nav,
+                  // 卫星位置的方差，卫星的健康标志位，导航点位
                   const prcopt_t *opt, sol_t *sol, double *azel, int *vsat,
+                  // 处理选项，定位解，卫星的方位角和仰角，卫星在定位时是否有效
                   double *resp, char *msg)
+                  // 伪距残差，错误信息
 {
     double x[NX]={0},dx[NX],Q[NX*NX],*v,*H,*var,sig;
     int i,j,k,info,stat,nv,ns;
@@ -376,15 +389,15 @@ static int estpos(const obsd_t *obs, int n, const double *rs, const double *dts,
     trace(3,"estpos  : n=%d\n",n);
     
     v=mat(n+4,1); H=mat(NX,n+4); var=mat(n+4,1);
-    
+    // 将上一历元的定位值作为本次历元最小二乘迭代的初始值（若没有上一历元的定位值，则初始值为0）
     for (i=0;i<3;i++) x[i]=sol->rr[i];
-    
+    // 最小二乘迭代
     for (i=0;i<MAXITR;i++) {
         
-        /* pseudorange residuals (m) */
+        /* pseudorange residuals (m) 计算伪距残差 */
         nv=rescode(i,obs,n,rs,dts,vare,svh,nav,x,opt,v,H,var,azel,vsat,resp,
                    &ns);
-        
+        // 方程个数须大于未知数个数
         if (nv<NX) {
             sprintf(msg,"lack of valid sats ns=%d",nv);
             break;
@@ -592,17 +605,17 @@ static void estvel(const obsd_t *obs, int n, const double *rs, const double *dts
     }
     free(v); free(H);
 }
-/* single-point positioning ----------------------------------------------------
+/* single-point positioning 通过伪距和多普勒观测量计算接收机的位置、速度和钟差-------
 * compute receiver position, velocity, clock bias by single-point positioning
 * with pseudorange and doppler observables
-* args   : obsd_t *obs      I   observation data
-*          int    n         I   number of observation data
-*          nav_t  *nav      I   navigation data
-*          prcopt_t *opt    I   processing options
-*          sol_t  *sol      IO  solution
-*          double *azel     IO  azimuth/elevation angle (rad) (NULL: no output)
-*          ssat_t *ssat     IO  satellite status              (NULL: no output)
-*          char   *msg      O   error message for error exit
+* args   : obsd_t *obs      I   observation data 原始观测量
+*          int    n         I   number of observation data 卫星个数
+*          nav_t  *nav      I   navigation data 导航电文
+*          prcopt_t *opt    I   processing options 处理选项
+*          sol_t  *sol      IO  solution 定位解
+*          double *azel     IO  azimuth/elevation angle (rad) (NULL: no output) 卫星的方位角和仰角
+*          ssat_t *ssat     IO  satellite status              (NULL: no output) 卫星状态
+*          char   *msg      O   error message for error exit 错误信息
 * return : status(1:ok,0:error)
 *-----------------------------------------------------------------------------*/
 extern int pntpos(const obsd_t *obs, int n, const nav_t *nav,
@@ -616,31 +629,31 @@ extern int pntpos(const obsd_t *obs, int n, const nav_t *nav,
     trace(3,"pntpos  : tobs=%s n=%d\n",time_str(obs[0].time,3),n);
     
     sol->stat=SOLQ_NONE;
-    
+    // 检验原始观测量的个数是否大于0
     if (n<=0) {
         strcpy(msg,"no observation data");
         return 0;
     }
     sol->time=obs[0].time;
     msg[0]='\0';
-    
+    // 卫星的位置和速度，卫星的钟差和钟漂，卫星位置的方差，卫星的方位角和仰角，伪距残差
     rs=mat(6,n); dts=mat(2,n); var=mat(1,n); azel_=zeros(2,n); resp=mat(1,n);
     
     if (opt_.mode!=PMODE_SINGLE) { /* for precise positioning */
-        opt_.ionoopt=IONOOPT_BRDC;
-        opt_.tropopt=TROPOPT_SAAS;
+        opt_.ionoopt=IONOOPT_BRDC; // 电离层矫正选Klobuchar广播星历模型
+        opt_.tropopt=TROPOPT_SAAS; // 对流层矫正选Saastmoinen模型
     }
-    /* satellite positons, velocities and clocks */
+    /* satellite positons, velocities and clocks 计算卫星的位置、速度和钟差 */
     satposs(sol->time,obs,n,nav,opt_.sateph,rs,dts,var,svh);
     
-    /* estimate receiver position with pseudorange */
+    /* estimate receiver position with pseudorange 用伪距估计接收机位置 */
     stat=estpos(obs,n,rs,dts,var,svh,nav,&opt_,sol,azel_,vsat,resp,msg);
     
-    /* RAIM FDE */
+    /* RAIM FDE 完好性检验 */
     if (!stat&&n>=6&&opt->posopt[4]) {
         stat=raim_fde(obs,n,rs,dts,var,svh,nav,&opt_,sol,azel_,vsat,resp,msg);
     }
-    /* estimate receiver velocity with Doppler */
+    /* estimate receiver velocity with Doppler 用多普勒观测量估计接收机速度 */
     if (stat) {
         estvel(obs,n,rs,dts,nav,&opt_,sol,azel_,vsat);
     }

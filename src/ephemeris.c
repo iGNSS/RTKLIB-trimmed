@@ -110,7 +110,7 @@ static int eph_sel[]={ /* GPS,GLO,GAL,QZS,BDS,IRN,SBS */
     0,0,0,0,0,0,0
 };
 
-/* variance by ura ephemeris -------------------------------------------------*/
+/* variance by ura ephemeris 用星历中的URA标定卫星位置方差 ---------------------*/
 static double var_uraeph(int sys, int ura)
 {
     const double ura_value[]={   
@@ -180,7 +180,7 @@ extern void alm2pos(gtime_t time, const alm_t *alm, double *rs, double *dts)
     rs[2]=y*sin(i);
     *dts=alm->f0+alm->f1*tk;
 }
-/* broadcast ephemeris to satellite clock bias ---------------------------------
+/* broadcast ephemeris to satellite clock bias 根据广播星历计算粗略的卫星钟差（不包含相对论校正和TGD）
 * compute satellite clock bias with broadcast ephemeris (gps, galileo, qzss)
 * args   : gtime_t time     I   time by satellite clock (gpst)
 *          eph_t *eph       I   broadcast ephemeris
@@ -202,7 +202,7 @@ extern double eph2clk(gtime_t time, const eph_t *eph)
     }
     return eph->f0+eph->f1*t+eph->f2*t*t;
 }
-/* broadcast ephemeris to satellite position and clock bias --------------------
+/* broadcast ephemeris to satellite position and clock bias 广播星历计算卫星的位置、钟差和方差
 * compute satellite position and clock bias with broadcast ephemeris (gps,
 * galileo, qzss)
 * args   : gtime_t time     I   time (gpst)
@@ -228,15 +228,15 @@ extern void eph2pos(gtime_t time, const eph_t *eph, double *rs, double *dts,
         rs[0]=rs[1]=rs[2]=*dts=*var=0.0;
         return;
     }
-    tk=timediff(time,eph->toe);
+    tk=timediff(time,eph->toe); // (E.4.2)
     
     switch ((sys=satsys(eph->sat,&prn))) {
         case SYS_GAL: mu=MU_GAL; omge=OMGE_GAL; break;
         case SYS_CMP: mu=MU_CMP; omge=OMGE_CMP; break;
         default:      mu=MU_GPS; omge=OMGE;     break;
     }
-    M=eph->M0+(sqrt(mu/(eph->A*eph->A*eph->A))+eph->deln)*tk;
-    
+    M=eph->M0+(sqrt(mu/(eph->A*eph->A*eph->A))+eph->deln)*tk; // (E.4.3)
+    // (E.4.4)
     for (n=0,E=M,Ek=0.0;fabs(E-Ek)>RTOL_KEPLER&&n<MAX_ITER_KEPLER;n++) {
         Ek=E; E-=(E-eph->e*sin(E)-M)/(1.0-eph->e*cos(E));
     }
@@ -247,40 +247,42 @@ extern void eph2pos(gtime_t time, const eph_t *eph, double *rs, double *dts,
     sinE=sin(E); cosE=cos(E);
     
     trace(4,"kepler: sat=%2d e=%8.5f n=%2d del=%10.3e\n",eph->sat,eph->e,n,E-Ek);
-    
+    // (E.4.5) (E.4.6)
     u=atan2(sqrt(1.0-eph->e*eph->e)*sinE,cosE-eph->e)+eph->omg;
     r=eph->A*(1.0-eph->e*cosE);
     i=eph->i0+eph->idot*tk;
     sin2u=sin(2.0*u); cos2u=cos(2.0*u);
-    u+=eph->cus*sin2u+eph->cuc*cos2u;
-    r+=eph->crs*sin2u+eph->crc*cos2u;
-    i+=eph->cis*sin2u+eph->cic*cos2u;
+    u+=eph->cus*sin2u+eph->cuc*cos2u; // (E.4.10) (E.4.7)
+    r+=eph->crs*sin2u+eph->crc*cos2u; // (E.4.11) (E.4.8)
+    i+=eph->cis*sin2u+eph->cic*cos2u; // (E.4.12) (E.4.9)
     x=r*cos(u); y=r*sin(u); cosi=cos(i);
     
     /* beidou geo satellite */
     if (sys==SYS_CMP&&(prn<=5||prn>=59)) { /* ref [9] table 4-1 */
-        O=eph->OMG0+eph->OMGd*tk-omge*eph->toes;
+        O=eph->OMG0+eph->OMGd*tk-omge*eph->toes; // (E.4.29)
         sinO=sin(O); cosO=cos(O);
         xg=x*cosO-y*cosi*sinO;
         yg=x*sinO+y*cosi*cosO;
         zg=y*sin(i);
         sino=sin(omge*tk); coso=cos(omge*tk);
+        // (E.4.30)
         rs[0]= xg*coso+yg*sino*COS_5+zg*sino*SIN_5;
         rs[1]=-xg*sino+yg*coso*COS_5+zg*coso*SIN_5;
         rs[2]=-yg*SIN_5+zg*COS_5;
     }
     else {
-        O=eph->OMG0+(eph->OMGd-omge)*tk-omge*eph->toes;
+        O=eph->OMG0+(eph->OMGd-omge)*tk-omge*eph->toes; // (E.4.13)
         sinO=sin(O); cosO=cos(O);
+        // (E.4.14)
         rs[0]=x*cosO-y*cosi*sinO;
         rs[1]=x*sinO+y*cosi*cosO;
         rs[2]=y*sin(i);
     }
-    tk=timediff(time,eph->toc);
+    tk=timediff(time,eph->toc); // (E.4.15)
     *dts=eph->f0+eph->f1*tk+eph->f2*tk*tk;
     
     /* relativity correction */
-    *dts-=2.0*sqrt(mu*eph->A)*eph->e*sinE/SQR(CLIGHT);
+    *dts-=2.0*sqrt(mu*eph->A)*eph->e*sinE/SQR(CLIGHT); // (E.4.16)
     
     /* position and clock error variance */
     *var=var_uraeph(sys,eph->sva);
@@ -418,7 +420,7 @@ extern void seph2pos(gtime_t time, const seph_t *seph, double *rs, double *dts,
     
     *var=var_uraeph(SYS_SBS,seph->sva);
 }
-/* select ephememeris --------------------------------------------------------*/
+/* select ephememeris 根据IODE选择星历，若IODE<0，则选择最近的星历 -----*/
 static eph_t *seleph(gtime_t time, int sat, int iode, const nav_t *nav)
 {
     double t,tmax,tmin;
@@ -498,7 +500,7 @@ static seph_t *selseph(gtime_t time, int sat, const nav_t *nav)
     }
     return nav->seph+j;
 }
-/* satellite clock with broadcast ephemeris ----------------------------------*/
+/* satellite clock with broadcast ephemeris 用广播星历计算粗略的卫星钟差 dts */
 static int ephclk(gtime_t time, gtime_t teph, int sat, const nav_t *nav,
                   double *dts)
 {
@@ -508,12 +510,13 @@ static int ephclk(gtime_t time, gtime_t teph, int sat, const nav_t *nav,
     int sys;
     
     trace(4,"ephclk  : time=%s sat=%2d\n",time_str(time,3),sat);
-    
+    // 获取卫星系统
     sys=satsys(sat,NULL);
     
     if (sys==SYS_GPS||sys==SYS_GAL||sys==SYS_QZS||sys==SYS_CMP||sys==SYS_IRN) {
+        // 传入的 IODE 为负，选择最接近的星历
         if (!(eph=seleph(teph,sat,-1,nav))) return 0;
-        *dts=eph2clk(time,eph);
+        *dts=eph2clk(time,eph); // 计算粗略的卫星钟差
     }
     else if (sys==SYS_GLO) {
         if (!(geph=selgeph(teph,sat,-1,nav))) return 0;
@@ -544,8 +547,11 @@ static int ephpos(gtime_t time, gtime_t teph, int sat, const nav_t *nav,
     *svh=-1;
     
     if (sys==SYS_GPS||sys==SYS_GAL||sys==SYS_QZS||sys==SYS_CMP||sys==SYS_IRN) {
+        // 选择星历
         if (!(eph=seleph(teph,sat,iode,nav))) return 0;
+        // 计算卫星的位置、钟差和方差
         eph2pos(time,eph,rs,dts,var);
+        // 增加一个极短的时间tt，重新计算位置和钟差，来求解卫星的速度和钟漂
         time=timeadd(time,tt);
         eph2pos(time,eph,rst,dtst,var);
         *svh=eph->svh;
@@ -566,7 +572,7 @@ static int ephpos(gtime_t time, gtime_t teph, int sat, const nav_t *nav,
     }
     else return 0;
     
-    /* satellite velocity and clock drift by differential approx */
+    /* satellite velocity and clock drift by differential approx 卫星速度和钟漂的差分近似值 */
     for (i=0;i<3;i++) rs[i+3]=(rst[i]-rs[i])/tt;
     dts[1]=(dtst[0]-dts[0])/tt;
     
@@ -723,7 +729,7 @@ extern int satpos(gtime_t time, gtime_t teph, int sat, int ephopt,
     *svh=0;
     
     switch (ephopt) {
-        case EPHOPT_BRDC  : return ephpos     (time,teph,sat,nav,-1,rs,dts,var,svh);
+        case EPHOPT_BRDC  : return ephpos     (time,teph,sat,nav,-1,rs,dts,var,svh); // 广播星历
         case EPHOPT_SBAS  : return satpos_sbas(time,teph,sat,nav,   rs,dts,var,svh);
         case EPHOPT_SSRAPC: return satpos_ssr (time,teph,sat,nav, 0,rs,dts,var,svh);
         case EPHOPT_SSRCOM: return satpos_ssr (time,teph,sat,nav, 1,rs,dts,var,svh);
@@ -735,15 +741,15 @@ extern int satpos(gtime_t time, gtime_t teph, int sat, int ephopt,
 }
 /* satellite positions and clocks ----------------------------------------------
 * compute satellite positions, velocities and clocks
-* args   : gtime_t teph     I   time to select ephemeris (gpst)
-*          obsd_t *obs      I   observation data
-*          int    n         I   number of observation data
-*          nav_t  *nav      I   navigation data
-*          int    ephopt    I   ephemeris option (EPHOPT_???)
-*          double *rs       O   satellite positions and velocities (ecef)
-*          double *dts      O   satellite clocks
-*          double *var      O   sat position and clock error variances (m^2)
-*          int    *svh      O   sat health flag (-1:correction not available)
+* args   : gtime_t teph     I   time to select ephemeris (gpst) 用来选择星历的gps时刻
+*          obsd_t *obs      I   observation data 原始观测量
+*          int    n         I   number of observation data 原始观测量的个数
+*          nav_t  *nav      I   navigation data 导航电文
+*          int    ephopt    I   ephemeris option (EPHOPT_???) 星历配置项
+*          double *rs       O   satellite positions and velocities (ecef) 卫星的位置和速度
+*          double *dts      O   satellite clocks 卫星的钟差和钟漂
+*          double *var      O   sat position and clock error variances (m^2) 卫星位置和时钟的方差
+*          int    *svh      O   sat health flag (-1:correction not available) 卫星的健康标志位
 * return : none
 * notes  : rs [(0:2)+i*6]= obs[i] sat position {x,y,z} (m)
 *          rs [(3:5)+i*6]= obs[i] sat velocity {vx,vy,vz} (m/s)
@@ -765,30 +771,33 @@ extern void satposs(gtime_t teph, const obsd_t *obs, int n, const nav_t *nav,
     int i,j;
     
     trace(3,"satposs : teph=%s n=%d ephopt=%d\n",time_str(teph,3),n,ephopt);
-    
+    // 遍历每一个原始观测量
     for (i=0;i<n&&i<2*MAXOBS;i++) {
+        // 初始化卫星的位置速度、钟差钟漂、方差和健康标志位
         for (j=0;j<6;j++) rs [j+i*6]=0.0;
         for (j=0;j<2;j++) dts[j+i*2]=0.0;
         var[i]=0.0; svh[i]=0;
         
-        /* search any pseudorange */
+        /* search any pseudorange 对第i个原始观测量，若没有伪距，跳到下一次循环 */
         for (j=0,pr=0.0;j<NFREQ;j++) if ((pr=obs[i].P[j])!=0.0) break;
         
         if (j>=NFREQ) {
             trace(3,"no pseudorange %s sat=%2d\n",time_str(obs[i].time,3),obs[i].sat);
             continue;
         }
-        /* transmission time by satellite clock */
+        /* transmission time by satellite clock 卫星信号的发射时间 */
         time[i]=timeadd(obs[i].time,-pr/CLIGHT);
         
-        /* satellite clock bias by broadcast ephemeris */
+        /* satellite clock bias by broadcast ephemeris
+        用广播星历计算卫星钟差dt（不包含相对论效应的钟差和TGD），仅作为 satpos() 的参数计算卫星的位置速度和更精确的钟差dts */
         if (!ephclk(time[i],teph,obs[i].sat,nav,&dt)) {
             trace(3,"no broadcast clock %s sat=%2d\n",time_str(time[i],3),obs[i].sat);
             continue;
         }
         time[i]=timeadd(time[i],-dt);
         
-        /* satellite position and clock at transmission time */
+        /* satellite position and clock at transmission time
+        计算卫星在信号发射时的位置速度、钟差钟漂和方差，取得健康标志位 */
         if (!satpos(time[i],teph,obs[i].sat,ephopt,nav,rs+i*6,dts+i*2,var+i,
                     svh+i)) {
             trace(3,"no ephemeris %s sat=%2d\n",time_str(time[i],3),obs[i].sat);
