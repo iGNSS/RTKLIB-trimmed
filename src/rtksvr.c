@@ -348,6 +348,7 @@ static int decoderaw(rtksvr_t *svr, int index)
     rtksvrlock(svr);
     
     for (i=0;i<svr->nb[index];i++) {
+        /* input rtcm data from stream */
         ret=input_rtcm3(svr->rtcm+index,svr->buff[index][i]);
         obs=&svr->rtcm[index].obs;
         nav=&svr->rtcm[index].nav;
