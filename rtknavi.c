@@ -91,7 +91,7 @@ int main(void) {
         PrcOpt.exsats[i]=0;
     }
 
-    // PCV, antenna phase centre variation
+    // PCV, antenna phase centre variation 天线相位中心改正
 	PrcOpt.pcvr[0]=PrcOpt.pcvr[1]=pcv0; // initialize antenna PCV
 
     PrcOpt.baseline[0]=0.0;
@@ -104,7 +104,7 @@ int main(void) {
     
 	NmeaCycle=NmeaCycle<1000?1000:NmeaCycle;
 
-	// degrees to radian
+	// degrees to radian 角度转弧度
     pos[0]=NmeaPos[0]*D2R;
     pos[1]=NmeaPos[1]*D2R;
     pos[2]=NmeaPos[2];
@@ -118,8 +118,8 @@ int main(void) {
     // start rtk server
 	if (!rtksvrstart(&rtksvr,SvrCycle,SvrBuffSize,strs,paths,Format,NavSelect,
 					 cmds,cmds_periodic,rcvopts,NmeaCycle,NmeaReq,nmeapos,
-					 &PrcOpt,solopt,NULL,errmsg)) {
-        printf("rtksvrstart error %s\n",errmsg);
+					 &PrcOpt,solopt,&monistr,errmsg)) {
+        trace(2,"rtksvrstart error %s\n",errmsg);
         traceclose();
 		return 0;
 	}

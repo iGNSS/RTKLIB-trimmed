@@ -1143,7 +1143,7 @@ extern int solve(const char *tr, const double *A, const double *Y, int n,
 
 #else /* without LAPACK/BLAS or MKL */
 
-/* multiply matrix -----------------------------------------------------------*/
+/* multiply matrix 矩阵相乘----------------------------------------------------*/
 extern void matmul(const char *tr, int n, int k, int m, double alpha,
                    const double *A, const double *B, double beta, double *C)
 {
@@ -1153,12 +1153,12 @@ extern void matmul(const char *tr, int n, int k, int m, double alpha,
     for (i=0;i<n;i++) for (j=0;j<k;j++) {
         d=0.0;
         switch (f) {
-            case 1: for (x=0;x<m;x++) d+=A[i+x*n]*B[x+j*m]; break;
-            case 2: for (x=0;x<m;x++) d+=A[i+x*n]*B[j+x*k]; break;
-            case 3: for (x=0;x<m;x++) d+=A[x+i*m]*B[x+j*m]; break;
-            case 4: for (x=0;x<m;x++) d+=A[x+i*m]*B[j+x*k]; break;
+            case 1: for (x=0;x<m;x++) d+=A[i+x*n]*B[x+j*m]; break; // NN: A(m*n) * B(k*m)
+            case 2: for (x=0;x<m;x++) d+=A[i+x*n]*B[j+x*k]; break; // TN: A(m*n) * B(k*m)
+            case 3: for (x=0;x<m;x++) d+=A[x+i*m]*B[x+j*m]; break; // TN: A(n*m) * B(k*m)
+            case 4: for (x=0;x<m;x++) d+=A[x+i*m]*B[j+x*k]; break; // TT: A(n*m) * B(m*k)
         }
-        if (beta==0.0) C[i+j*n]=alpha*d; else C[i+j*n]=alpha*d+beta*C[i+j*n];
+        if (beta==0.0) C[i+j*n]=alpha*d; else C[i+j*n]=alpha*d+beta*C[i+j*n]; // C(k*n) = alpha*A*B+beta*C
     }
 }
 /* LU decomposition ----------------------------------------------------------*/
@@ -3519,7 +3519,7 @@ extern int reppaths(const char *path, char *rpath[], int nmax, gtime_t ts,
     for (i=0;i<n;i++) trace(3,"reppaths: rpath=%s\n",rpath[i]);
     return n;
 }
-/* geometric distance 计算接收机和卫星之间的卫地距--------------------------------
+/* geometric distance 计算近似接收机位置到卫星的卫地距，得到近似接收机位置指向sat号卫星的单位矢量e
 * compute geometric distance and receiver-to-satellite unit vector
 * args   : double *rs       I   satellilte position (ecef at transmission) (m) 卫星的ECEF坐标
 *          double *rr       I   receiver position (ecef at reception) (m) 接收机的ECEF坐标

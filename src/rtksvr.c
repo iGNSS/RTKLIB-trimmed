@@ -762,7 +762,7 @@ extern int rtksvrstart(rtksvr_t *svr, int cycle, int buffsize, int *strs,
            cycle,buffsize,navsel,nmeacycle,nmeareq);
     
     if (svr->state) {
-        printf("server already started\n");
+        sprintf(errmsg,"server already started");
         return 0;
     }
     strinitcom();
@@ -788,7 +788,7 @@ extern int rtksvrstart(rtksvr_t *svr, int cycle, int buffsize, int *strs,
         if (!(svr->buff[i]=(uint8_t *)malloc(buffsize))||
             !(svr->pbuf[i]=(uint8_t *)malloc(buffsize))) {
             tracet(1,"rtksvrstart: malloc error\n");
-            printf("rtk server malloc error\n");
+            sprintf(errmsg,"rtk server malloc error");
             return 0;
         }
         for (j=0;j<10;j++) svr->nmsg[i][j]=0;
@@ -809,7 +809,7 @@ extern int rtksvrstart(rtksvr_t *svr, int cycle, int buffsize, int *strs,
     for (i=0;i<2;i++) { /* output peek buffer */
         if (!(svr->sbuf[i]=(uint8_t *)malloc(buffsize))) {
             tracet(1,"rtksvrstart: malloc error\n");
-            printf("rtk server malloc error\n");
+            sprintf(errmsg,"rtk server malloc error");
             return 0;
         }
     }
@@ -836,7 +836,7 @@ extern int rtksvrstart(rtksvr_t *svr, int cycle, int buffsize, int *strs,
         rw=i<3?STR_MODE_R:STR_MODE_W;
         if (strs[i]!=STR_FILE) rw|=STR_MODE_W;
         if (!stropen(svr->stream+i,strs[i],rw,paths[i])) {
-            printf("str%d open error path=%s\n",i+1,paths[i]);
+            sprintf(errmsg,"str%d open error path=%s",i+1,paths[i]);
             for (i--;i>=0;i--) strclose(svr->stream+i);
             return 0;
         }
@@ -865,7 +865,7 @@ extern int rtksvrstart(rtksvr_t *svr, int cycle, int buffsize, int *strs,
     /* create rtk server thread */
     if (!(svr->thread=CreateThread(NULL,0,rtksvrthread,svr,0,NULL))) {
         for (i=0;i<MAXSTRRTK;i++) strclose(svr->stream+i);
-        printf("thread create error\n");
+        sprintf(errmsg,"thread create error\n");
         return 0;
     }
     WaitForSingleObject(svr->thread, INFINITE);

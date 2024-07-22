@@ -582,7 +582,7 @@ static int ephpos(gtime_t time, gtime_t teph, int sat, const nav_t *nav,
 static int satpos_sbas(gtime_t time, gtime_t teph, int sat, const nav_t *nav,
                         double *rs, double *dts, double *var, int *svh)
 {
-    const sbssatp_t *sbs = NULL;
+    const sbssatp_t *sbs;
     int i;
     
     trace(4,"satpos_sbas: time=%s sat=%2d\n",time_str(time,3),sat);
@@ -739,7 +739,7 @@ extern int satpos(gtime_t time, gtime_t teph, int sat, int ephopt,
     *svh=-1;
     return 0;
 }
-/* satellite positions and clocks ----------------------------------------------
+/* satellite positions and clocks 解算卫星的位置速度、钟差钟漂、方差，并取得卫星的健康标志位
 * compute satellite positions, velocities and clocks
 * args   : gtime_t teph     I   time to select ephemeris (gpst) 用来选择星历的gps时刻
 *          obsd_t *obs      I   observation data 原始观测量
