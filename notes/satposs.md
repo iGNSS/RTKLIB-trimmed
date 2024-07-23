@@ -151,14 +151,16 @@ $$表2.5　GPS卫星历书参数（概略星历）\\
 6个轨道平面以与赤道成55度的倾角上升到赤道上方。它们跨越赤道从南半球上升到北半球的点称为“升交点赤经”。由于轨道平面是均匀分布的，所以六个上升交点之间的角度是60度。
 
 ![图3.1_GPS卫星的星座](images/Figure3.1_Nominal_GPS_satellite_constellation.png)
+
 ![图3.2_GPS星座的平面投影](images/Figure3.2_GPS_constellation_planar_projection.png)
-![图2.15_定义轨道取向的三个开普勒轨道参数](images/Figure2.15_Three_Keplerian_orbital_elements_defining_the_orientation_of_the_orbit.png)
+
+![图2.15_定义轨道取向的三个开普勒轨道参数](images/图2.15_定义轨道方向的3个开普勒轨道元素.png)
 
 ### 平近点角M
 
 卫星经过近地点的时刻 $\tau$ —— 真近点角 $v=\angle PFA$ —— 偏近点角 $E=\angle POB$ —— 平近点角 $M=E−e\sin E$
 
-![图2.14_偏近点角与真近点角之间的关系](images/Figure2.14_Relationship_between_eccentric_anomaly_and_true_anomaly.png)
+![图2.14_偏近点角与真近点角之间的关系](images/图2.14_偏近点角与真近点角之间的关系.png)
 
 对平近点角M的含义的解释：
 
