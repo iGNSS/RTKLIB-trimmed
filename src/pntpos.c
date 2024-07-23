@@ -391,7 +391,7 @@ static int estpos(const obsd_t *obs, int n, const double *rs, const double *dts,
     trace(3,"estpos  : n=%d\n",n);
     
     v=mat(n+4,1); H=mat(NX,n+4); var=mat(n+4,1);
-    // 将上一历元的定位值作为本次历元最小二乘迭代的初始值（若没有上一历元的定位值，则初始值为0）
+    // 将上一历元的定位解作为本次历元最小二乘迭代的初值（若没有上一历元的定位值，则初值为0）
     for (i=0;i<3;i++) x[i]=sol->rr[i];
     // 最小二乘迭代
     for (i=0;i<MAXITR;i++) {
@@ -399,7 +399,7 @@ static int estpos(const obsd_t *obs, int n, const double *rs, const double *dts,
         /* pseudorange residuals (m) 计算伪距残差 */
         nv=rescode(i,obs,n,rs,dts,vare,svh,nav,x,opt,v,H,var,azel,vsat,resp,
                    &ns);
-        // 方程个数须大于未知数个数
+        // 方程个数须不小于未知数个数
         if (nv<NX) {
             sprintf(msg,"lack of valid sats ns=%d",nv);
             break;
@@ -657,7 +657,7 @@ extern int pntpos(const obsd_t *obs, int n, const nav_t *nav,
         opt_.ionoopt=IONOOPT_BRDC; // 电离层矫正选Klobuchar广播星历模型
         opt_.tropopt=TROPOPT_SAAS; // 对流层矫正选Saastmoinen模型
     }
-    /* satellite positons, velocities and clocks 计算卫星的位置、速度和钟差 */
+    /* satellite positons, velocities and clocks 解算卫星的位置速度、钟差钟漂和方差，取得健康标志位 */
     satposs(sol->time,obs,n,nav,opt_.sateph,rs,dts,var,svh);
     
     /* estimate receiver position with pseudorange 用伪距估计接收机位置 */

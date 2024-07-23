@@ -451,35 +451,36 @@ $$\dot{M}_k=n$$
 
 > 详见《GPS原理与接收机设计（修订版）》谢钢 著，电子工业出版社，3.6节
 
-# 卫星的位置速度、钟差钟漂、方差解算函数 satposs() 流程
+## 卫星的位置速度、钟差钟漂、方差解算函数 satposs() 流程
 
 ```plantuml
 @startuml
 start
 
-while (对每一个原始观测量)
-    :初始化位置速度、钟差钟漂、方差和健康标志位;
+while (遍历每一个原始观测量)
+    :初始化卫星的位置速度、钟差钟漂、方差和健康标志位;
 
-    if (没有伪距) then (yes)
-        :跳到下一次循环;
-    else (no)
-    endif
-    :计算卫星信号的发射时间;
-    :**ephclk**：计算卫星钟差dt（不包含相对论效应和TGD）;
-    :用dt修正卫星信号的发射时间;
-    :**satpos**：计算卫星在信号发射时的位置速度、钟差钟漂和方差，取得健康标志位;
+        if (第i个原始观测量有伪距) then (yes)
+            :计算卫星信号的发射时间;
+            :**ephclk**：计算卫星钟差dt（不包含相对论效应和TGD）;
+            :用dt修正卫星信号的发射时间;
+            :**satpos**：计算卫星在信号发射时的位置速度、钟差钟漂和方差，取得健康标志位;
 
-    if (没有精密时钟) then (yes)
-        :用广播时钟代替;
-    else (no)
-    endif
+            if (没有精密时钟) then (yes)
+                :用广播时钟代替;
+            else (no)
+            endif
+        else (no)
+        endif
 endwhile
 
 stop
 @enduml
 ```
 
-## eph2pos()
+### eph2pos()
+
+用广播星历计算卫星的位置、钟差和方差：
 
 $$\text{E.4 GNSS Satellite Ephemerides and Clocks}\\
 \begin{array}{ll}
@@ -520,15 +521,15 @@ $b=f_1^2/f_i^2$ 对 $L_i$ 伪距
 
 $T_{GD}$：GPS和QZSS的群延时参数，对伽利略：$B_{GD}$，单位：s
 
-## GLONASS卫星位置计算
+### GLONASS卫星位置计算
 
 selgeph(), geph2clk(), geph2pos(), glorbit(), deq()
 
-## 精密星历
+### 精密星历
 
 peph2pos(), pephpos(), interppol(), pephclk()
 
-# 参考文献
+## 参考文献
 
 [1]《GPS/GNSS原理与应用（第3版）》 Understanding GPS/GNSS Principles and Applications, Third Edition (Gnss Technology and Applications Series) (Elliott Kaplan, Christopher J. Hegarty) 
 
@@ -536,7 +537,7 @@ peph2pos(), pephpos(), interppol(), pephclk()
 
 [3]《GPS原理与接收机设计（修订版）》谢钢 著，电子工业出版社
 
-[4] [RTKLIB_manual_2.4.2.pdf](https://github.com/tomojitakasu/RTKLIB/blob/rtklib_2.4.3/doc/manual_2.4.2.pdf)
+[4] [RTKLIB_manual_2.4.2.pdf](https://github.com/Kevin-QAQ/RTKLIB-trimmed/blob/rtklib_2.4.3/doc/manual_2.4.2.pdf)
 
 [5] [https://github.com/LiZhengXiao99/Navigation-Learning/](https://github.com/LiZhengXiao99/Navigation-Learning/blob/main/01-RTKLIB%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/07-RTKLIB%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%EF%BC%88%E4%B8%83%EF%BC%89%E5%AF%BC%E8%88%AA%E7%94%B5%E6%96%87%E3%80%81%E6%98%9F%E5%8E%86%E6%95%B0%E6%8D%AE%E8%AF%BB%E5%8F%96%E3%80%81%E5%8D%AB%E6%98%9F%E4%BD%8D%E7%BD%AE%E9%92%9F%E5%B7%AE%E8%AE%A1%E7%AE%97.md)
 
