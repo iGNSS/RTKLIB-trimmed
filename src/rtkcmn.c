@@ -1152,13 +1152,13 @@ extern void matmul(const char *tr, int n, int k, int m, double alpha,
     
     for (i=0;i<n;i++) for (j=0;j<k;j++) {
         d=0.0;
-        switch (f) {
-            case 1: for (x=0;x<m;x++) d+=A[i+x*n]*B[x+j*m]; break; // NN: A(m*n) * B(k*m)
-            case 2: for (x=0;x<m;x++) d+=A[i+x*n]*B[j+x*k]; break; // TN: A(m*n) * B(k*m)
-            case 3: for (x=0;x<m;x++) d+=A[x+i*m]*B[x+j*m]; break; // TN: A(n*m) * B(k*m)
-            case 4: for (x=0;x<m;x++) d+=A[x+i*m]*B[j+x*k]; break; // TT: A(n*m) * B(m*k)
+        switch (f) { // RTKLIB 的所有二维矩阵，为方便编程，都是按列存入的一维数组（而不是按行），这样 A[i+x*n] 直接就表示 A[i][x]
+            case 1: for (x=0;x<m;x++) d+=A[i+x*n]*B[x+j*m]; break; // NN: A(n*m)   * B(m*k)
+            case 2: for (x=0;x<m;x++) d+=A[i+x*n]*B[j+x*k]; break; // NT: A(n*m)   * B(k*m)^T
+            case 3: for (x=0;x<m;x++) d+=A[x+i*m]*B[x+j*m]; break; // TN: A(m*n)^T * B(m*k)
+            case 4: for (x=0;x<m;x++) d+=A[x+i*m]*B[j+x*k]; break; // TT: A(m*n)^T * B(k*m)^T
         }
-        if (beta==0.0) C[i+j*n]=alpha*d; else C[i+j*n]=alpha*d+beta*C[i+j*n]; // C(k*n) = alpha*A*B+beta*C
+        if (beta==0.0) C[i+j*n]=alpha*d; else C[i+j*n]=alpha*d+beta*C[i+j*n]; // C(n*k) = alpha*A*B+beta*C
     }
 }
 /* LU decomposition ----------------------------------------------------------*/

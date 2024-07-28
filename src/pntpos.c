@@ -312,7 +312,8 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
         for (j=0;j<NX;j++) {
             H[j+nv*NX]=j<3?-e[j]:(j==3?1.0:0.0); // (F.6.21)
         }
-        /* time system offset and receiver bias correction 各卫星导航系统间的时间偏差和接收机时钟偏差校正 */
+        /* time system offset and receiver bias correction
+        非GPS的卫星，H阵的该行方程还需考虑此卫星导航系统与GPS的钟差；mask记录所有原始观测量是否有用到对应的卫星导航系统 */
         if      (sys==SYS_GLO) {v[nv]-=x[4]; H[4+nv*NX]=1.0; mask[1]=1;}
         else if (sys==SYS_GAL) {v[nv]-=x[5]; H[5+nv*NX]=1.0; mask[2]=1;}
         else if (sys==SYS_CMP) {v[nv]-=x[6]; H[6+nv*NX]=1.0; mask[3]=1;}

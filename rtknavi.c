@@ -32,8 +32,8 @@ int main(void) {
     };
 	int i,strs[MAXSTRRTK]={0};
     char* paths[8] = { "data\\Rover_20240520_082407.rtcm3::T::x60",
-                       "data\\Base_Station_20240520_082407.rtcm3::T::x60","",
-                       "data\\Solution_%Y%m%d-%h%M%S.log","","","","" },
+                       "data\\Base_Station_20240520_082407.rtcm3::T::x60",
+                       "","data\\Solution_%Y%m%d-%h%M%S.log","","","","" },
         * cmds[3] = { NULL,NULL,NULL }, * cmds_periodic[3] = { NULL,NULL,NULL }, * rcvopts[3] = { "","","" };
 	char errmsg[20148];
     pcv_t pcv0={0};

@@ -1781,7 +1781,12 @@ extern int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
         }
     }
     if (time.time!=0) rtk->tt=timediff(rtk->sol.time,time);
-    
+
+    /* single point positioning */
+    if (opt->mode==PMODE_SINGLE) {
+        outsolstat(rtk);
+        return 1;
+    }
     /* suppress output of single solution */
     if (!opt->outsingle) {
         rtk->sol.stat=SOLQ_NONE;

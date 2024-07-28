@@ -23,3 +23,15 @@
 ```c
 double dion=0, dtrp=0, vion=0, vtrp=0;
 ```
+
+## 参考文献
+
+[1]《GPS/GNSS原理与应用（第3版）》 Understanding GPS/GNSS Principles and Applications, Third Edition (Gnss Technology and Applications Series) (Elliott Kaplan, Christopher J. Hegarty) 
+
+[2] Basics of the GPS Technique: Observation Equations, Geoffrey Blewitt
+
+[3]《GPS原理与接收机设计（修订版）》谢钢 著，电子工业出版社
+
+[4] [RTKLIB_manual_2.4.2.pdf](https://github.com/Kevin-QAQ/RTKLIB-trimmed/blob/rtklib_2.4.3/doc/manual_2.4.2.pdf)
+
+[5] [https://github.com/LiZhengXiao99/Navigation-Learning/](https://github.com/LiZhengXiao99/Navigation-Learning/blob/main/01-RTKLIB%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/07-RTKLIB%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%EF%BC%88%E4%B8%83%EF%BC%89%E5%AF%BC%E8%88%AA%E7%94%B5%E6%96%87%E3%80%81%E6%98%9F%E5%8E%86%E6%95%B0%E6%8D%AE%E8%AF%BB%E5%8F%96%E3%80%81%E5%8D%AB%E6%98%9F%E4%BD%8D%E7%BD%AE%E9%92%9F%E5%B7%AE%E8%AE%A1%E7%AE%97.md)
