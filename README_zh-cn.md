@@ -16,6 +16,8 @@
 4. 打开隐藏文件夹 .vscode 中的 c_cpp_properties.json，将其中的 "compilerPath": "C:\\msys64\\mingw32\\bin\\gcc.exe", 改为您自己的 32 位 gcc.exe 的目录路径；
 5. 打开任意 .c 文件，点击 VS Code 左栏的“运行和调试”，点击左上角的“开始调试”按钮（或按 F5）即可调试和运行。
 
+注意：如果要在 VS Code 中断点调试并查看各个局部变量的值，需要将 tasks.json 文件中，"args" 里的编译器优化等级 "-O3", 这一行注释掉
+
 ## RTKLIB 2.4.3b BUG
 
 1. src/pntpos.c: rescode(): dion, dtrp, vion, vtrp 未初始化就使用，可在声明时进行初始化：

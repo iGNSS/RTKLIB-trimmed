@@ -16,6 +16,8 @@ Open the .sln file of this project in Visual Studio and select Debug and x86 to 
 4. Open c_cpp_properties.json in the hidden folder .vscode and change "compilerPath": "C:\\msys64\\mingw32\\bin\\gcc.exe" to the directory path of your own 32-bit gcc.exe;
 5. Open any .c file, click 'Run and Debug' in the left column of VS Code, and click 'Start Debugging' button in the upper left corner (or press F5) to debug and run.
 
+Note: If you want to interrupt debugging in VS Code and see the value of each local variable, you need to comment out the line ‘-O3’, the compiler optimisation level, in ‘args’ in the tasks.json file.
+
 ## RTKLIB 2.4.3b BUG
 
 1. src/pntpos.c: rescode(): dion, dtrp, vion, vtrp are used uninitialised and can be initialised at declaration time:
