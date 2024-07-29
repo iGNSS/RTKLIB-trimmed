@@ -533,9 +533,9 @@ peph2pos(), pephpos(), interppol(), pephclk()
 
 ## 参考文献
 
-[1]《GPS/GNSS原理与应用（第3版）》 Understanding GPS/GNSS Principles and Applications, Third Edition (Gnss Technology and Applications Series) (Elliott Kaplan, Christopher J. Hegarty) 
+[1]《GPS/GNSS原理与应用（第3版）》 _Understanding GPS/GNSS Principles and Applications_, Third Edition (Gnss Technology and Applications Series) (Elliott Kaplan, Christopher J. Hegarty) 
 
-[2] Basics of the GPS Technique: Observation Equations, Geoffrey Blewitt
+[2] _Basics of the GPS Technique: Observation Equations_, Geoffrey Blewitt
 
 [3]《GPS原理与接收机设计（修订版）》谢钢 著，电子工业出版社
 
