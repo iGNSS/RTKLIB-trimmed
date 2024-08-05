@@ -3550,7 +3550,7 @@ extern double satazel(const double *pos, const double *e, double *azel)
 {
     double az=0.0,el=PI/2.0,enu[3];
     
-    if (pos[2]>-RE_WGS84) {
+    if (pos[2]>-RE_WGS84) { // 接收机的高度不可能小于负的地球半长轴
         ecef2enu(pos,e,enu);
         az=dot(enu,enu,2)<1E-12?0.0:atan2(enu[0],enu[1]); // (E.3.11)
         if (az<0.0) az+=2*PI;
