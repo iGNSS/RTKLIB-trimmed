@@ -83,7 +83,7 @@ static int snrmask(const obsd_t *obs, const double *azel, const prcopt_t *opt)
     }
     return 1;
 }
-/* psendorange with code bias correction 计算差分码偏差(DCB)改正的伪距-----------*/
+/* psendorange with code bias correction 卫星码偏差修正-----------*/
 static double prange(const obsd_t *obs, const nav_t *nav, const prcopt_t *opt,
                      double *var)
 {
@@ -302,7 +302,7 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
                 continue;
             }
         }
-        /* psendorange with code bias correction 差分码偏差改正 */
+        /* psendorange with code bias correction 卫星码偏差修正 */
         if ((P=prange(obs+i,nav,opt,&vmeas))==0.0) continue;
         
         /* pseudorange residual 伪距残差 */

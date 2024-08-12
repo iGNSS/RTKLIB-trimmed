@@ -100,7 +100,7 @@ while (遍历每一个原始观测量)
     else (no)
     endif
 
-    :prange：差分码偏差改正;
+    :prange：卫星码偏差修正;
     :计算第nv个伪距残差;
     :计算设计矩阵的第nv行;
     :varerr：计算伪距残差的方差;
@@ -113,3 +113,5 @@ endwhile
 stop
 @enduml
 ```
+
+卫星码偏差修正：[https://mp.weixin.qq.com/s/nNxB-8Y6DHn-z6irCgcF1A](https://mp.weixin.qq.com/s/nNxB-8Y6DHn-z6irCgcF1A)
