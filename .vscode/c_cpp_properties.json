@@ -5,10 +5,12 @@
             "includePath": [
                 "${workspaceFolder}/**"
             ],
+            // 定义宏
             "defines": [
                 "_DEBUG",
                 "UNICODE",
-                "_UNICODE"
+                "_UNICODE",
+                "TRACE", "ENAGLO", "ENAQZS", "ENACMP", "ENAGAL", "ENAIRN", "NFREQ=5", "SVR_REUSEADDR", "WIN32"
             ],
             "windowsSdkVersion": "10.0.22621.0",
             "compilerPath": "C:\\msys64\\mingw32\\bin\\gcc.exe",
